@@ -1,11 +1,11 @@
-function buildHTML(path, repo) {
+function buildHTML(path, repo, repoParsed) {
   return [
     '<!doctype html>',
     '<html>',
     '<head>',
     `<title>${path}</title>`,
     `<meta name="go-import" content="${path} git ${repo}">`,
-    `<meta name="go-source" content="${path} _ ${repo}/tree/master{/dir} ${repo}/blob/master{/dir}/{file}#L{line}">`,
+    `<meta name="go-source" content="${path} _ ${repoParsed}{/dir} ${repoParsed}{/dir}/{file}#L{line}">`,
     '</head>',
     '<body>',
     path,
@@ -26,22 +26,33 @@ module.exports = (req, res) => {
     return res.end();
   }
 
-  const username = process.env.VANITYURLS_GITHUB_USERNAME;
-
-  if (!username) {
-    return res.status(500).send('Vercel Vanity URLs error: GitHub username not provided.');
+  const gitAccount = process.env.VANITYURLS_GIT_ACCOUNT;
+  if (!gitAccount) {
+    return res.status(500).send('Vercel Vanity URLs error: Git account not provided.');
   }
 
-  const package = getPackageName(req.url);
-  if (!package.length) {
-    res.writeHead(301, {
-      Location: `https://github.com/${username}`
-    });
+  const pkg = getPackageName(req.url);
+  if (!pkg.length) {
+    res.writeHead(301, {Location: gitAccount});
     return res.end();
   }
 
+  const paths = pkg.split("/");
+  let importRoot = `${req.headers.host}/${pkg}`;
+  let repo = `${gitAccount}/${pkg}`;
+  let repoParsed = `${gitAccount}/${pkg}`;
 
-  const path = `${req.headers.host}/${package}`;
-  const repo = `https://github.com/${username}/${package}`;
-  return res.send(buildHTML(path, repo));
+  const specialPackages = process.env.VANITYURLS_SPECIAL_PACKAGES !== "" ? process.env.VANITYURLS_SPECIAL_PACKAGES.split(",") : [];
+  if (specialPackages.includes(paths[0])) {
+    repoParsed = `${gitAccount}/${paths[0]}`
+    repo = `${gitAccount}/${paths[0]}`
+    importRoot = `${req.headers.host}/${paths[0]}`
+  }
+
+  if (gitAccount.includes("gitlab")) {
+    repoParsed += "/-"
+  }
+  repoParsed += "/tree/master"
+
+  return res.send(buildHTML(importRoot, repo, repoParsed));
 };
