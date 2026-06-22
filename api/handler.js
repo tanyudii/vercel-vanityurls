@@ -44,9 +44,14 @@ module.exports = (req, res) => {
 
   const specialPackages = process.env.VANITYURLS_SPECIAL_PACKAGES !== "" ? process.env.VANITYURLS_SPECIAL_PACKAGES.split(",") : [];
   if (specialPackages.includes(paths[0])) {
-    repoParsed = `${gitAccount}/${paths[0]}`
+    // Repo is always the first path segment (e.g. github.com/embraceid/go-pkg).
     repo = `${gitAccount}/${paths[0]}`
-    importRoot = `${req.headers.host}/${paths[0]}`
+    repoParsed = `${gitAccount}/${paths[0]}`
+    // Module root uses up to 2 path segments so that sub-modules like
+    // go-pkg/common and go-pkg/platform get the correct go-import name.
+    // Deeper paths (go-pkg/common/pointer) still resolve to the 2-segment root.
+    const moduleDepth = paths.length >= 2 ? 2 : 1;
+    importRoot = `${req.headers.host}/${paths.slice(0, moduleDepth).join('/')}`
   }
 
   if (gitAccount.includes("gitlab")) {
