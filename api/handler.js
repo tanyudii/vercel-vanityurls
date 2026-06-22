@@ -47,15 +47,10 @@ module.exports = (req, res) => {
     // Repo is always the first path segment (e.g. github.com/embraceid/go-pkg).
     repo = `${gitAccount}/${paths[0]}`
     repoParsed = `${gitAccount}/${paths[0]}`
-    // Module root uses up to 2 path segments normally (e.g. go-pkg/common),
-    // but extends to 3 when the third segment is a major-version suffix like
-    // v2, v3, … so that go-pkg/common/v2 gets the correct go-import name.
-    // Deeper paths (go-pkg/common/v2/pointer) still resolve to the 3-segment root.
-    let moduleDepth = paths.length >= 2 ? 2 : 1;
-    if (paths.length >= 3 && /^v[2-9]\d*$/.test(paths[2])) {
-      moduleDepth = 3;
-    }
-    importRoot = `${req.headers.host}/${paths.slice(0, moduleDepth).join('/')}`
+    // Module root is always just the repo name (1 segment). This lets Go identify
+    // sub-modules as subdirectories (e.g. go-pkg/common → subdir "common") and
+    // resolve version tags with the directory prefix (e.g. common/v2.0.0).
+    importRoot = `${req.headers.host}/${paths[0]}`
   }
 
   if (gitAccount.includes("gitlab")) {
